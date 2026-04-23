@@ -1,0 +1,6 @@
+{
+  "vertices": { "min": 4, "max": 24 },
+  "irregularity": { "min": 0.1, "max": 0.9 },
+  "complexity": { "min": 0, "max": 0.25 },
+  "strokeOffset": { "min": 320, "max": 720 }
+}
