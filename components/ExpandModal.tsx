@@ -1,4 +1,4 @@
-
+﻿
 import React, { useRef, useState, useEffect } from 'react';
 import { Button } from './Button';
 import { DownloadIcon, CopyIcon } from './icons';
@@ -107,7 +107,7 @@ export const ExpandModal: React.FC<ExpandModalProps> = ({ isOpen, onClose, isLoa
             <div className="bg-bg border border-surface p-6 rounded-lg w-full max-w-2xl space-y-4 relative" onClick={e => e.stopPropagation()}>
                 <button 
                     onClick={onClose} 
-                    className="absolute top-4 right-4 text-3xl font-light text-text-muted hover:text-text leading-none"
+                    className="absolute top-4 right-4 text-3xl text-text-muted hover:text-text leading-none"
                     aria-label="Close"
                 >
                     &times;

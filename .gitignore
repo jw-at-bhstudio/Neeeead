@@ -14,6 +14,10 @@ dist-ssr
 *.local
 .env.local
 .env.migrate
+.env.local.staging
+.env.local.prod
+.env.migrate.staging
+.env.migrate.prod
 
 # Editor directories and files
 .vscode/*

@@ -31,13 +31,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             <div className="bg-bg border border-surface p-8 rounded-xl w-full max-w-md space-y-6 relative shadow-2xl">
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-2xl font-light text-text-muted hover:text-text leading-none transition-colors"
+                    className="absolute top-4 right-4 text-2xl text-text-muted hover:text-text leading-none transition-colors"
                     aria-label="Close"
                 >
                     &times;
                 </button>
                 <div className="text-center space-y-2 mb-8">
-                    <h2 className="text-xl text-text font-medium">登录 / 注册</h2>
+                    <h2 className="text-xl text-text">登录 / 注册</h2>
                 </div>
                 <Auth
                     supabaseClient={supabase}
@@ -89,7 +89,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                             },
                         },
                         className: {
-                            button: 'font-medium transition-colors !bg-text !text-bg hover:!opacity-90',
+                            button: 'transition-colors !bg-text !text-bg hover:!opacity-90',
                             input: 'transition-colors',
                             label: 'mb-2 block',
                         }
@@ -104,7 +104,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                                 email_input_placeholder: '你的邮箱地址',
                                 password_input_placeholder: '你的密码',
                                 button_label: '登录',
-                                loading_button_label: '登录中 ...',
+                                loading_button_label: '登录中...',
                                 social_provider_text: '使用 {{provider}} 登录',
                                 link_text: '已有账号？点击登录',
                             },
@@ -114,7 +114,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                                 email_input_placeholder: '你的邮箱地址',
                                 password_input_placeholder: '你的密码',
                                 button_label: '注册',
-                                loading_button_label: '注册中 ...',
+                                loading_button_label: '注册中...',
                                 social_provider_text: '使用 {{provider}} 注册',
                                 link_text: '没有账号？点击注册',
                             },

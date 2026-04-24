@@ -19,26 +19,51 @@ View your app in AI Studio: https://ai.studio/apps/drive/1qndsNd-0_WYd2DNbEtWBT4
 3. Run the app:
    `npm run dev`
 
-## Supabase Phase 1 (Local + DB Schema + RLS)
+## Standard Mode (Network Ready)
 
-### Option A: Supabase CLI
+This project now uses **dual environments**:
+
+- `staging`: daily testing and feature verification
+- `prod`: production release
+
+Recommended branch mapping:
+
+- `develop` -> staging
+- `main` -> prod
+
+### Local environment switch
+
+```powershell
+Copy-Item .env.local.staging .env.local -Force
+Copy-Item .env.migrate.staging .env.migrate -Force
+```
+
+```powershell
+Copy-Item .env.local.prod .env.local -Force
+Copy-Item .env.migrate.prod .env.migrate -Force
+```
+
+## Supabase Migration
+
+### Option A (Standard): Supabase CLI
 
 1. Install/check CLI:
-   `npx supabase --version`
-2. Init in project root:
-   `npx supabase init`
-3. Login and link project:
-   `npx supabase login`
-   `npx supabase link --project-ref <your-project-ref>`
-4. Push schema:
-   `npx supabase db push`
+   `npm run supabase:version`
+2. Login:
+   `npm run supabase:login`
+3. Set refs in shell:
+   - `SUPABASE_STAGING_PROJECT_REF`
+   - `SUPABASE_PROD_PROJECT_REF`
+4. Push migrations:
+   - `npm run db:push:staging`
+   - `npm run db:push:prod`
 
-### Option B: Built-in migration runner (no Supabase CLI)
+### Option B (Fallback): Built-in migration runner
 
 1. Copy migrate env template:
    `cp .env.migrate.example .env.migrate`
 2. Set real `DATABASE_URL` in `.env.migrate`
-3. Run migrations:
+3. Run migrations (used by CI manual workflow as well):
    `npm run db:migrate`
 
 This repo already includes the first migration:
@@ -74,6 +99,14 @@ This repo already includes the first migration:
   - migration checksum validation
   - per-migration transaction
   - advisory lock to avoid parallel execution
+
+## GitHub Actions
+
+- `CI`: build validation on `main`/`develop` push and PR.
+- `Supabase Migrate`: manual workflow dispatch to migrate `staging` or `prod`.
+  - required secrets:
+    - `SUPABASE_STAGING_DB_URL`
+    - `SUPABASE_PROD_DB_URL`
 
 ## Phase 1 verification checklist
 
