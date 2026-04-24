@@ -10,7 +10,13 @@ import { Button } from '../components/Button';
 import { Slider } from '../components/Slider';
 import { generateShareCard } from '../utils/canvasUtils';
 import { ExpandModal } from '../components/ExpandModal';
+import { AuthModal } from '../components/AuthModal';
+import { SaveConfigModal } from '../components/SaveConfigModal';
+import { AppTopNav } from '../components/AppTopNav';
 import brandPresetConfig from '../brandPreset.json';
+import { saveMyCreatureDraft } from '../lib/supabase/creatures';
+import type { User } from '@supabase/supabase-js';
+import { getCurrentUser } from '../lib/supabase/creatures';
 
 const CANVAS_SIZE = 1800;
 
@@ -312,8 +318,39 @@ const quizSteps = [
     { param: 'numPoints', question: '你的‘知己圈’更接近...', info: "知己多少", minLabel: '少而精', maxLabel: '广而多' },
     { param: 'irregularity', question: '一个完美的周末，你更倾向于？', info: "行事风格", minLabel: '按计划行事，效率第一', maxLabel: '跟着感觉走，享受意外' },
     { param: 'complexity', question: '面对内心不同的声音时，你通常？', info: "内心世界", minLabel: '很快做出决定，目标明确', maxLabel: '反复思量，时常纠结' },
-    { param: 'strokeOffset', question: '你的社交风格更偏向...', info: "处世态度", minLabel: '坦率直接', maxLabel: '圆融周到' },
+    { param: 'strokeOffset', question: '你的社交风格更偏？', info: "处世态度", minLabel: '坦率直接', maxLabel: '圆融周到' },
 ];
+
+const CARD_SHARE_PHRASES = [
+    "我捏的~",
+    "好玩吧？",
+    "这啥呀哈哈哈",
+    "蠢萌小物",
+    "也是有只电子宠物",
+];
+
+function pickRandomSharePhrase() {
+    return CARD_SHARE_PHRASES[Math.floor(Math.random() * CARD_SHARE_PHRASES.length)];
+}
+
+function normalizeToUnit(value: number, min: number, max: number) {
+    if (max <= min) return 0.5;
+    const ratio = (value - min) / (max - min);
+    return Math.min(1, Math.max(0, ratio));
+}
+
+function resolveUserLabel(user: User | null | undefined) {
+    const fromMeta =
+        typeof user?.user_metadata?.username === "string"
+            ? user.user_metadata.username
+            : typeof user?.user_metadata?.display_name === "string"
+            ? user.user_metadata.display_name
+            : null;
+    if (fromMeta && fromMeta.trim()) return fromMeta.trim();
+    const fromEmail = user?.email?.split("@")[0]?.trim();
+    if (fromEmail) return fromEmail;
+    return "匿名创作者";
+}
 
 const App: React.FC = () => {
     // App flow state
@@ -347,8 +384,7 @@ const App: React.FC = () => {
     const [seed, setSeed] = useState(() => Math.random());
     const [showHandles, setShowHandles] = useState(false);
     const [isGeneratingCard, setIsGeneratingCard] = useState(false);
-    const [showAuthorModal, setShowAuthorModal] = useState(false);
-    const [authorName, setAuthorName] = useState('');
+    const [showSaveConfigModal, setShowSaveConfigModal] = useState(false);
     const [copyButtonText, setCopyButtonText] = useState('Copy SVG');
     const [eyes, setEyes] = useState<Point[]>([]);
     const [isDesktop, setIsDesktop] = useState(() => {
@@ -371,6 +407,15 @@ const App: React.FC = () => {
     // Card Preview State
     const [generatedCardUrl, setGeneratedCardUrl] = useState<string | null>(null);
     const [cardDownloadName, setCardDownloadName] = useState<string>("");
+    const [previewPayload, setPreviewPayload] = useState<{
+        name: string;
+        soundMimic: string;
+        creatorName: string;
+        shouldSave: boolean;
+    } | null>(null);
+    const [isFinalizingCard, setIsFinalizingCard] = useState(false);
+    const [previewError, setPreviewError] = useState<string | null>(null);
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
 
     const svgRef = useRef<SVGSVGElement>(null);
     const workerRef = useRef<Worker | null>(null);
@@ -510,6 +555,10 @@ const App: React.FC = () => {
         return () => mediaQuery.removeEventListener('change', syncLayoutMode);
     }, []);
 
+    useEffect(() => {
+        getCurrentUser().then(setCurrentUser).catch(() => setCurrentUser(null));
+    }, []);
+
     const handleRegenerate = useCallback(() => {
         setSeed(Math.random());
         // setEyes([]); // Remove this to keep eyes when tweaking
@@ -552,8 +601,7 @@ const App: React.FC = () => {
     };
 
     const handleGenerateCard = () => {
-        if (!svgRef.current) return;
-        setShowAuthorModal(true);
+        setShowSaveConfigModal(true);
     };
 
     const handleCopySVG = useCallback(() => {
@@ -742,31 +790,89 @@ ${eyesSvgString}
         setEyes(prevEyes => [...prevEyes, { x: checkPoint.x, y: checkPoint.y }]);
     };
 
-    const handleConfirmCardGeneration = async (name: string) => {
+    const downloadCardImage = (dataUrl: string, fileName: string) => {
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = `我的捏物-${fileName}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleSaveConfigConfirm = async (name: string, soundMimic: string, guestCreatorName?: string) => {
         if (!svgRef.current) return;
-        setShowAuthorModal(false);
+
+        const latestUser = await getCurrentUser().catch(() => null);
+        setCurrentUser(latestUser);
+        const creatorName = latestUser ? resolveUserLabel(latestUser) : (guestCreatorName?.trim() || "匿名创作者");
         setIsGeneratingCard(true);
-        const finalName = name || '匿名';
-        setCardDownloadName(finalName);
+        setPreviewError(null);
+        setShowSaveConfigModal(false);
+        setCardDownloadName(name);
+        setPreviewPayload({
+            name,
+            soundMimic,
+            creatorName,
+            shouldSave: !!latestUser,
+        });
         try {
+            const normalizedTraits = {
+                confidant: normalizeToUnit(numPoints, brandPresetConfig.vertices.min, brandPresetConfig.vertices.max),
+                actionStyle: normalizeToUnit(irregularity, brandPresetConfig.irregularity.min, brandPresetConfig.irregularity.max),
+                innerWorld: normalizeToUnit(complexity, brandPresetConfig.complexity.min, brandPresetConfig.complexity.max),
+                socialStyle: normalizeToUnit(strokeOffset, brandPresetConfig.strokeOffset.min, brandPresetConfig.strokeOffset.max),
+            };
             const dataUrl = await generateShareCard({
                 svgElement: svgRef.current,
-                name: "我的捏物",
-                authorName: finalName,
+                creatureName: name,
+                shareLine: pickRandomSharePhrase(),
+                authorName: creatorName,
+                soundMimic,
                 bgColor: backgroundColor,
-                stats: {
-                    vertices: numPoints,
-                    irregularity: Number(irregularity.toFixed(2)),
-                    complexity: Number(complexity.toFixed(2)),
-                    strokeOffset: strokeOffset
+                traits: {
+                    confidant: normalizedTraits.confidant,
+                    actionStyle: normalizedTraits.actionStyle,
+                    innerWorld: normalizedTraits.innerWorld,
+                    socialStyle: normalizedTraits.socialStyle,
                 }
             });
             setGeneratedCardUrl(dataUrl);
         } catch (error) {
             console.error("Failed to generate personality card:", error);
+            setPreviewError("预览生成失败，请重试");
         } finally {
             setIsGeneratingCard(false);
-            setAuthorName('');
+        }
+    };
+
+    const handleConfirmPreview = async () => {
+        if (!generatedCardUrl || !previewPayload) return;
+        setIsFinalizingCard(true);
+        setPreviewError(null);
+        try {
+            if (previewPayload.shouldSave) {
+                await saveMyCreatureDraft({
+                    title: previewPayload.name,
+                    sound_mimic: previewPayload.soundMimic,
+                    seed: seed || 0,
+                    params: {
+                        numPoints,
+                        irregularity,
+                        complexity,
+                        roundness,
+                        strokeOffset
+                    },
+                    shape: { pathData },
+                    eyes: eyes.map((eye) => ({ x: eye.x, y: eye.y })) as unknown as any
+                });
+            }
+            downloadCardImage(generatedCardUrl, cardDownloadName || previewPayload.name);
+            setGeneratedCardUrl(null);
+            setPreviewPayload(null);
+        } catch (error) {
+            setPreviewError(error instanceof Error ? error.message : "确认失败，请重试");
+        } finally {
+            setIsFinalizingCard(false);
         }
     };
 
@@ -774,12 +880,11 @@ ${eyesSvgString}
         return (
             <div className="min-h-screen bg-bg flex flex-col items-center justify-center text-center p-4 space-y-8">
                 <div className="space-y-2">
-                    <h1 className="text-[24pt] text-text">盒中捏物</h1>
-                    <p className="text-4xl font-black tracking-widest text-primary">Neeeead!!!</p>
+                    <h1 className="text-2xl text-text">盒中捏物</h1>
+                    <p className="text-4xl tracking-widest text-primary">Neeeead!!!</p>
                 </div>
                 <p className="max-w-md text-text-muted">
-                    欢迎来到「盒中捏物」，一个可以捏出你内心形状的小玩具。
-                    准备好开始一场自我探索之旅了吗？
+                    欢迎来到「盒中捏物」，一个可以捏出你内心形状的小玩具。准备好开始一场自我探索之旅了吗？
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
                     <Button onClick={() => setAppState('quiz')} className="w-48">
@@ -789,8 +894,8 @@ ${eyesSvgString}
                         高级模式
                     </Button>
                 </div>
-                <footer className="absolute bottom-6 text-xs text-surface space-y-1">
-                    <p>© 2025 四百盒子社区</p>
+                <footer className="absolute bottom-6 text-lg text-surface space-y-1">
+                    <p className="text-sm">© 2025 四百盒子社区</p>
                     <p>设计 嘉文@不含观点°</p>
                 </footer>
             </div>
@@ -870,7 +975,7 @@ ${eyesSvgString}
             />
             {(eyeErrorMsg || isValidShape) && (
                 <div
-                    className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-full text-sm shadow-lg pointer-events-none transition-colors duration-300 ${
+                    className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-full text-lg shadow-lg pointer-events-none transition-colors duration-300 ${
                         eyeErrorMsg
                             ? 'bg-red-900/80 text-red-200 animate-bounce'
                             : 'bg-primary/90 text-bg'
@@ -934,36 +1039,15 @@ ${eyesSvgString}
                     </main>
                 )}
             </div>
-            {showAuthorModal && (
-                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-                    <div className="bg-bg border border-surface p-8 rounded-lg w-full max-w-sm space-y-6 relative">
-                        <button 
-                            onClick={() => { setShowAuthorModal(false); setAuthorName(''); }} 
-                            className="absolute top-4 right-4 text-2xl font-light text-text-muted hover:text-text leading-none"
-                            aria-label="Close"
-                        >
-                            &times;
-                        </button>
-                        <div className="text-center space-y-2">
-                            <h2 className="text-lg text-text">署上你的名字</h2>
-                            <p className="text-sm text-text-muted">为你的「捏物」留下创作者信息。</p>
-                        </div>
-                        <input
-                            type="text"
-                            value={authorName}
-                            onChange={(e) => setAuthorName(e.target.value)}
-                            placeholder="输入你的名字或保持匿名"
-                            className="w-full text-text bg-surface px-3 py-2 rounded border border-border focus:ring-1 focus:ring-primary focus:border-primary text-center"
-                            aria-label="Author's name"
-                        />
-                        <div className="flex flex-col gap-3">
-                            <Button onClick={() => handleConfirmCardGeneration(authorName || '匿名')} className="w-full">
-                                确认并生成卡片
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            
+            <SaveConfigModal
+                isOpen={showSaveConfigModal}
+                onClose={() => setShowSaveConfigModal(false)}
+                onConfirm={handleSaveConfigConfirm}
+                requireCreatorName={!currentUser}
+                defaultCreatorName={resolveUserLabel(currentUser)}
+            />
+
             <ExpandModal
                 isOpen={showExpandModal}
                 onClose={() => setShowExpandModal(false)}
@@ -978,7 +1062,7 @@ ${eyesSvgString}
                 <div className="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-50 p-4 lg:p-8 backdrop-blur-sm">
                     <button 
                         onClick={() => setGeneratedCardUrl(null)} 
-                        className="absolute top-6 right-6 text-4xl font-light text-text-muted hover:text-text leading-none transition-colors"
+                        className="absolute top-6 right-6 text-4xl text-text-muted hover:text-text leading-none transition-colors"
                         aria-label="Close"
                     >
                         &times;
@@ -986,32 +1070,38 @@ ${eyesSvgString}
                     <div className="relative h-[70vh] lg:h-[80vh] max-w-full flex-shrink-0 flex justify-center items-center">
                         <img 
                             src={generatedCardUrl} 
-                            alt="生成的捏物卡片" 
+                            alt="生成的捏物卡片"
                             className="h-full object-contain rounded-lg shadow-2xl ring-1 ring-white/10" 
                         />
                     </div>
                     <div className="mt-8 flex flex-col sm:flex-row gap-4 items-center">
                         <Button 
-                            onClick={() => {
-                                const link = document.createElement('a');
-                                link.href = generatedCardUrl;
-                                link.download = `我的捏物-${cardDownloadName}.png`;
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                            }} 
+                            onClick={handleConfirmPreview}
                             className="w-48 shadow-lg shadow-primary/20"
+                            disabled={isFinalizingCard}
                         >
-                            下载卡片
+                            {isFinalizingCard
+                                ? "处理中..."
+                                : previewPayload?.shouldSave
+                                ? "确认无误（保存并下载）"
+                                : "确认无误（下载）"}
                         </Button>
                         <Button 
-                            onClick={() => setGeneratedCardUrl(null)} 
+                            onClick={() => {
+                                setGeneratedCardUrl(null);
+                                setPreviewPayload(null);
+                                setPreviewError(null);
+                            }} 
                             variant="secondary" 
                             className="w-48"
+                            disabled={isFinalizingCard}
                         >
                             返回修改
                         </Button>
                     </div>
+                    {previewError && (
+                        <p className="mt-3 text-lg text-alert">{previewError}</p>
+                    )}
                 </div>
             )}
         </>

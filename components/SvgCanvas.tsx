@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect, useRef } from 'react';
 import { Point } from '../utils/geometry';
 import { FitMode } from '../utils/types';

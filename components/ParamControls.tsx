@@ -8,6 +8,7 @@ import { PresetRangeControl } from './PresetRangeControl';
 import { CopyIcon } from './icons';
 import { Point } from '../utils/geometry';
 import { AuthModal } from './AuthModal';
+import { SaveConfigModal } from './SaveConfigModal';
 import { getCurrentUser, saveMyCreatureDraft } from '../lib/supabase/creatures';
 import type { Json } from '../lib/supabase/database.types';
 
@@ -65,11 +66,11 @@ const viewerModeSliders = [
 ];
 
 const developerModeLabels = {
-    numPoints: "金 (3~400)",
-    irregularity: "火 (0~1)",
-    complexity: "木 (0~1)",
-    roundness: "水 (0~1)",
-    strokeOffset: "土 (50~1000)"
+    numPoints: "点数(3~400)",
+    irregularity: "不规则度(0~1)",
+    complexity: "复杂度(0~1)",
+    roundness: "圆润度(0~1)",
+    strokeOffset: "描边(50~1000)"
 };
 
 export const ParamControls: React.FC<ParamControlsProps> = (props) => {
@@ -79,7 +80,7 @@ export const ParamControls: React.FC<ParamControlsProps> = (props) => {
         showHandles, setShowHandles, onRetakeQuiz, onGenerateCard, isGeneratingCard, onStartOver,
         onExpand, onCopySVG, copyButtonText, eyes, onRemoveEyes,
         isValidShape, validationMessage, onAutoFix, isAutoFixing,
-        canvasSlot, seed, pathData
+        canvasSlot
     } = props;
 
     const isViewer = mode === 'viewer';
@@ -87,53 +88,21 @@ export const ParamControls: React.FC<ParamControlsProps> = (props) => {
     // Auth and Save state
     const [user, setUser] = useState<any>(null);
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
-    const [saveSuccess, setSaveSuccess] = useState(false);
 
     useEffect(() => {
         getCurrentUser().then(setUser).catch(console.error);
     }, []);
 
-    const handleSave = async () => {
-        if (!user) {
-            setIsAuthModalOpen(true);
-            return;
-        }
-
-        setIsSaving(true);
-        try {
-            await saveMyCreatureDraft({
-                seed: seed || 0,
-                params: {
-                    numPoints: props.numPoints,
-                    irregularity: props.irregularity,
-                    complexity: props.complexity,
-                    roundness: props.roundness,
-                    strokeOffset: props.strokeOffset
-                },
-                shape: { pathData },
-                eyes: eyes.map((eye) => ({ x: eye.x, y: eye.y })) as unknown as Json
-            });
-            setSaveSuccess(true);
-            setTimeout(() => setSaveSuccess(false), 3000);
-        } catch (error) {
-            console.error("Failed to save draft:", error);
-            alert("保存失败，请稍后重试");
-        } finally {
-            setIsSaving(false);
-        }
-    };
-    
     return (
         <aside className="w-full lg:w-96 bg-bg p-[6px] lg:p-0 flex flex-col gap-6 lg:h-full lg:overflow-hidden overflow-y-auto">
             <div className="flex-shrink-0 flex justify-between items-center">
                 <div className="flex flex-col">
-                    <h1 className="text-[18pt] text-text leading-tight">{isViewer ? "顺手捏" : "大师捏"}</h1>
-                    <p className="text-xs text-text-muted mt-1">
-                        {isViewer ? "普通人，捏只普通的物" : "捏的不好，就是你的问题了"}
+                    <h1 className="text-xl text-text leading-tight">{isViewer ? "顺手捏" : "大师捏"}</h1>
+                    <p className="text-lg text-text-muted mt-1">
+                        {isViewer ? "普通人，捏只普通的" : "捏的不好，就是你的问题了"}
                     </p>
                 </div>
-                <div className="flex items-center gap-4 text-xs">
+                <div className="flex items-center gap-4 text-lg">
                     {user ? (
                         <span className="text-primary truncate max-w-[80px]" title={user.email}>{user.email?.split('@')[0]}</span>
                     ) : (
@@ -192,7 +161,7 @@ export const ParamControls: React.FC<ParamControlsProps> = (props) => {
                             <Slider label={developerModeLabels.strokeOffset} min={50} max={1000} value={props.strokeOffset} onChange={e => props.setStrokeOffset(Number(e.target.value))} />
                         </div>
                         <div className="border-t border-border pt-6 flex items-center justify-between">
-                            <span className="text-sm text-text">内视</span>
+                            <span className="text-lg text-text">内视</span>
                             <ToggleSwitch id="show-handles-toggle" label="" checked={showHandles} onChange={(e) => setShowHandles(e.target.checked)} />
                         </div>
                     </>
@@ -211,35 +180,31 @@ export const ParamControls: React.FC<ParamControlsProps> = (props) => {
                 
                 <div className="space-y-3">
                     {!isValidShape && (
-                        <div className="p-3 bg-red-900/20 border border-red-500/50 rounded-[4px] text-red-200 text-sm flex flex-col gap-2">
+                        <div className="p-3 bg-red-900/20 border border-red-500/50 rounded-[4px] text-red-200 text-lg flex flex-col gap-2">
                             <p>{validationMessage}</p>
-                            <Button onClick={onAutoFix} disabled={isAutoFixing} variant="secondary" className="w-full text-xs py-1.5 h-auto">
+                            <Button onClick={onAutoFix} disabled={isAutoFixing} variant="secondary" className="w-full text-lg py-1.5 h-auto">
                                 {isAutoFixing ? '修复中...' : '帮我修复'}
                             </Button>
                         </div>
                     )}
                     <Button 
-                        onClick={handleSave} 
-                        variant="secondary"
-                        className="w-full" 
-                        disabled={isSaving || !isValidShape || eyes.length === 0 || eyes.length > 3}
-                    >
-                        {isSaving ? '保存中...' : saveSuccess ? '已保存！' : '保存我的捏物'}
-                    </Button>
-                    <Button 
                         onClick={onGenerateCard} 
                         className="w-full" 
                         disabled={isGeneratingCard || !isValidShape || eyes.length === 0 || eyes.length > 3}
                     >
-                        {isGeneratingCard ? '生成中...' : '生成我的捏物卡片'}
+                        {isGeneratingCard
+                            ? '预览生成中...'
+                            : user
+                            ? '生成卡片并保存'
+                            : '生成卡片'}
                     </Button>
                     <Button onClick={onExpand} className="hidden lg:block w-full" variant="secondary">
                         导出矢量图形
                     </Button>
                 </div>
             </div>
-             <footer className="flex-shrink-0 text-center text-xs text-surface space-y-1 mt-2">
-                <p>© 2025 四百盒子社区</p>
+             <footer className="flex-shrink-0 text-center text-lg text-surface space-y-1 mt-2">
+                <p className="text-sm">© 2025 四百盒子社区</p>
                 <p>设计 嘉文@不含观点°</p>
             </footer>
             

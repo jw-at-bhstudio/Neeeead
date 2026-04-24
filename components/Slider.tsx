@@ -1,4 +1,4 @@
-
+﻿
 import React from 'react';
 
 interface SliderProps {
@@ -50,7 +50,7 @@ export const Slider: React.FC<SliderProps> = ({
                 className="w-full h-2 bg-surface rounded-lg appearance-none cursor-pointer accent-primary disabled:cursor-not-allowed"
             />
             {(minLabel || maxLabel) && (
-                <div className="flex justify-between items-center text-xs text-text-muted mt-1 px-1">
+                <div className="flex justify-between items-center text-lg text-text-muted mt-1 px-1">
                     <span>{minLabel}</span>
                     <span>{maxLabel}</span>
                 </div>

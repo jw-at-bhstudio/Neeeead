@@ -1,4 +1,4 @@
-// This file is a bundled version of the 'polygon-clipping' library by Manuel Martins.
+﻿// This file is a bundled version of the 'polygon-clipping' library by Manuel Martins.
 // Original source: https://github.com/mfogel/polygon-clipping
 // License: MIT
 // This allows the use of its powerful geometric operations without adding external dependencies.

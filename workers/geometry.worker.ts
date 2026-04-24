@@ -1,4 +1,4 @@
-
+﻿
 import { union } from '../utils/polygon-clipper';
 
 type Point = [number, number];

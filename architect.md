@@ -28,8 +28,8 @@
     *   **PostgreSQL**：作为核心关系型数据库，存储用户、捏物参数和交互日志。
     *   **Supabase Auth**：处理用户注册、登录（支持第三方 Oauth）。
     *   **Supabase Realtime (WebSocket)**：实现“盒子空间”中投食、捏物移动等状态在多个客户端之间的毫秒级同步。
-    *   **Migration Runner (`npm run db:migrate`)**：当前默认迁移方案。通过项目内脚本 `scripts/migrate.mjs` 连接 Postgres 执行 `supabase/migrations/*.sql`，并记录 `schema_migrations`，避免 Supabase CLI 在特定网络环境不可用的问题。
-    *   **Supabase CLI（可选）**：网络可达时仍可使用 `supabase db push`。
+    *   **Supabase CLI（标准模式）**：网络畅通时，采用 CLI 驱动数据库迁移与环境链接。
+    *   **Migration Runner (`npm run db:migrate`)（保底模式）**：在 CLI 不可用或 CI 需要直连 URL 时使用。通过项目内脚本 `scripts/migrate.mjs` 执行 `supabase/migrations/*.sql`，并记录 `schema_migrations`。
 *   **云端部署与 CI/CD：Vercel**
     *   **解决问题**：与 GitHub 深度集成，每次向 `main` 分支 push 代码时，自动触发 Next.js 构建、CDN 分发，并可联动 GitHub Actions 执行数据库结构的更新。
 
@@ -43,32 +43,48 @@
 - npm 10+
 - Next.js dev server：`npm run dev`
 
-### 2. 环境变量分层
+### 2. 环境变量分层（双环境）
 
 #### 前端运行时（公开）
-存放在 `.env.local` 与 Vercel Project Environment Variables：
+存放在本地 `.env.local`（由 staging/prod 文件覆盖）与 Vercel Environment Variables：
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 #### 数据库迁移（私密，仅开发机/CI）
-存放在 `.env.migrate`（禁止提交）：
+存放在本地 `.env.migrate`（由 staging/prod 文件覆盖）与 GitHub Actions Secrets：
 
 - `DATABASE_URL`
 
-示例模板文件：
-- `.env.local.example`
-- `.env.migrate.example`
+本地文件建议：
+- `.env.local.staging`
+- `.env.local.prod`
+- `.env.migrate.staging`
+- `.env.migrate.prod`
 
-### 3. 迁移执行标准
+模板文件：
+- `.env.local.staging.example`
+- `.env.local.prod.example`
+- `.env.migrate.staging.example`
+- `.env.migrate.prod.example`
 
-默认命令：
+### 3. 迁移执行标准（CLI 主、Runner 备）
+
+本地 CLI 命令：
+
+```bash
+npm run supabase:login
+npm run db:push:staging
+npm run db:push:prod
+```
+
+CI / 自动化命令（fallback）：
 
 ```bash
 npm run db:migrate
 ```
 
-执行行为：
+执行行为（两种模式共用）：
 - 按文件名顺序执行 `supabase/migrations/*.sql`
 - 每个 migration 独立事务
 - 记录 `public.schema_migrations`（filename + checksum）
@@ -127,17 +143,29 @@ npm run db:migrate
 
 ## 四、 部署链路规范（GitHub -> Vercel）
 
-### 1. 顺序约束
+### 1. 分支与环境映射
+
+1. `develop` -> Staging Vercel + Staging Supabase
+2. `main` -> Production Vercel + Production Supabase
+
+### 2. 顺序约束
 
 1. 先完成本地开发与迁移验证
-2. 推送 GitHub 仓库
-3. Vercel 绑定 GitHub 仓库并配置环境变量
-4. 首次线上部署后做回归测试
+2. 先迁移 staging，再验证 staging
+3. 合并 `main` 前先迁移 prod
+4. 推送 GitHub 并触发 Vercel 部署
+5. 线上回归测试
 
-### 2. 回归最小清单
+### 3. CI/CD 工作流
+
+- `CI`：每次 push/PR 到 `main` 或 `develop` 执行构建验证。
+- `Supabase Migrate`：手动触发，选择 `staging` 或 `prod`，通过 `DATABASE_URL` 跑迁移。
+
+### 4. 回归最小清单
 
 - 未登录可访问 `捏只新的` 和 `盒子广场（只读）`
 - 登录后可保存捏物到 `creatures`
+- 登录后可在 `我的盒子` 执行搜索、重命名、删除与私有/公开切换
 - `public_pool` 查询可读
 - RLS 不允许用户修改他人数据
 

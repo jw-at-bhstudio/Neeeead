@@ -35,7 +35,7 @@ export default function AccountPage() {
       <h1 className="text-2xl text-text">我的账号</h1>
       {!email ? (
         <>
-          <p className="mt-2 text-text-muted">你当前未登录。</p>
+          <p className="mt-2 text-text-muted">你当前未登录</p>
           <Button className="mt-4" onClick={() => setAuthOpen(true)}>
             登录/注册
           </Button>

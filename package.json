@@ -1,14 +1,22 @@
 {
   "name": "盒中捏物-neeeead!!!",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:migrate": "node scripts/migrate.mjs"
+    "db:migrate": "node scripts/migrate.mjs",
+    "supabase:version": "npx --yes supabase --version",
+    "supabase:login": "npx --yes supabase login",
+    "supabase:link:staging": "node scripts/supabase-link.mjs staging",
+    "supabase:link:prod": "node scripts/supabase-link.mjs prod",
+    "db:push": "npx --yes supabase db push",
+    "db:push:staging": "node scripts/supabase-link-and-push.mjs staging",
+    "db:push:prod": "node scripts/supabase-link-and-push.mjs prod",
+    "ci:check": "npm run build"
   },
   "dependencies": {
     "@supabase/auth-ui-react": "^0.4.7",
