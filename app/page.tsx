@@ -17,6 +17,7 @@ import brandPresetConfig from '../brandPreset.json';
 import { saveMyCreatureDraft } from '../lib/supabase/creatures';
 import type { User } from '@supabase/supabase-js';
 import { getCurrentUser } from '../lib/supabase/creatures';
+import { supabase } from '../lib/supabase/client';
 
 const CANVAS_SIZE = 1800;
 
@@ -548,7 +549,24 @@ const App: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        getCurrentUser().then(setCurrentUser).catch(() => setCurrentUser(null));
+        let mounted = true;
+        const applyUser = (user: User | null) => {
+            if (!mounted) return;
+            setCurrentUser(user);
+        };
+
+        getCurrentUser().then(applyUser).catch(() => applyUser(null));
+
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+            applyUser(session?.user ?? null);
+        });
+
+        return () => {
+            mounted = false;
+            subscription.unsubscribe();
+        };
     }, []);
 
     const handleRegenerate = useCallback(() => {
@@ -870,7 +888,7 @@ ${eyesSvgString}
 
     if (appState === 'welcome') {
         return (
-            <div className="h-[calc(100dvh-57px)] box-border overflow-hidden bg-bg flex flex-col text-center px-4 py-2">
+            <div className="h-[calc(100dvh-57px-var(--safe-bottom))] box-border overflow-hidden bg-bg flex flex-col text-center px-4 py-2">
                 <div className="flex-1 flex flex-col items-center justify-start pt-1 gap-0">
                     <div className="w-full flex flex-col items-center gap-0">
                         <img
@@ -897,7 +915,7 @@ ${eyesSvgString}
                         </Button>
                     </div>
                 </div>
-                <footer className="text-sm sm:text-lg text-surface space-y-1 pb-1">
+                <footer className="text-sm sm:text-lg text-surface space-y-1 pb-[calc(var(--safe-bottom)+4px)]">
                     <p className="text-sm">© 2025 四百盒子社区</p>
                     <p>设计 嘉文@不含观点°</p>
                 </footer>

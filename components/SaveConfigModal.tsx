@@ -25,11 +25,11 @@ const NAME_TOO_LONG_HINTS = [
 ];
 
 const SOUND_CHAR_OPTIONS = [
-    "哇", "呜", "嗷", "咕", "啵", "嘟", "咚", "呼", "叽", "喵",
-    "汪", "哼", "嘿", "哈", "啦", "呀", "咩", "桀", "喔", "嗯",
-    "咔", "啪", "呱", "啾", "咦", "噗", "嘎", "哟", "唔", "咻",
-    "嘭", "哒", "噜", "嘻", "咪", "咿", "吱", "啷", "嘶", "咙",
-    "嗒", "咯", "哩", "喏", "咳", "呀", "喃", "嗨", "咣", "啪",
+    "啊", "嗷", "啵", "哒", "叮", "咚", "嘟", "嗯", "嘎", "咯",
+    "咕", "呱", "咣", "哈", "嗨", "哼", "嘿", "呼", "叽", "桀",
+    "啾", "咔", "咳", "哭", "啷", "啦", "哩", "隆", "噜", "咩",
+    "咪", "喵", "喃", "喏", "啪", "啪", "嘭", "噗", "嘶", "哇",
+    "汪", "喔", "呜", "唔", "嘻", "咻", "咿", "呀", "哟", "吱",
 ];
 
 const X_PATTERNS: Segment[][] = [
@@ -73,6 +73,21 @@ function buildSoundFromSlots(option: RhythmOption, slots: string[]) {
         return segmentStrings.join("-");
     });
     return groupStrings.join("~");
+}
+
+function pickRandomChar(pool: string[]) {
+    return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function getGroupRanges(option: RhythmOption): Array<{ start: number; end: number }> {
+    const ranges: Array<{ start: number; end: number }> = [];
+    let cursor = 0;
+    for (const group of option.groups) {
+        const size = group.reduce((sum, n) => sum + n, 0);
+        ranges.push({ start: cursor, end: cursor + size });
+        cursor += size;
+    }
+    return ranges;
 }
 
 function createRandomRhythmOptions(): RhythmOption[] {
@@ -132,6 +147,7 @@ export const SaveConfigModal: React.FC<SaveConfigModalProps> = ({
         () => rhythmOptions.find((item) => item.id === selectedRhythmId) ?? null,
         [rhythmOptions, selectedRhythmId]
     );
+    const displayName = name.trim() || "你的捏物";
 
     useEffect(() => {
         const needed = flattenSlotCount(selectedRhythm);
@@ -184,18 +200,91 @@ export const SaveConfigModal: React.FC<SaveConfigModalProps> = ({
         });
     };
 
-    const handleShuffleRemain = () => {
-        const randomPool = shuffleArray(SOUND_CHAR_OPTIONS);
-        let pointer = 0;
+    const handleShuffleWeird = () => {
+        setSlotChars((prevChars) => {
+            const next = [...prevChars];
+            const used = new Set<string>();
 
-        setSlotChars((prevChars) =>
-            prevChars.map((char, idx) => {
-                if (slotSources[idx] === 'manual') return char; // 保留用户已指定的字
-                const picked = randomPool[pointer % randomPool.length];
-                pointer += 1;
-                return picked;
-            })
+            for (let i = 0; i < next.length; i += 1) {
+                const source = slotSources[i] ?? 'empty';
+                const current = next[i];
+                if (source === 'manual') {
+                    if (current) used.add(current);
+                    continue;
+                }
+
+                const prev = i > 0 ? next[i - 1] : '';
+                if (prev && Math.random() < 0.05) {
+                    next[i] = prev;
+                    used.add(prev);
+                    continue;
+                }
+
+                const uniquePool = SOUND_CHAR_OPTIONS.filter((char) => !used.has(char));
+                if (uniquePool.length > 0) {
+                    const picked = pickRandomChar(uniquePool);
+                    next[i] = picked;
+                    used.add(picked);
+                    continue;
+                }
+
+                const nonPrevPool = prev
+                    ? SOUND_CHAR_OPTIONS.filter((char) => char !== prev)
+                    : SOUND_CHAR_OPTIONS;
+                const fallback = pickRandomChar(nonPrevPool.length > 0 ? nonPrevPool : SOUND_CHAR_OPTIONS);
+                next[i] = fallback;
+                used.add(fallback);
+            }
+
+            return next;
+        });
+        setSlotSources((prevSources) =>
+            prevSources.map((source) => (source === 'manual' ? 'manual' : 'auto'))
         );
+    };
+
+    const handleShuffleNormal = () => {
+        if (!selectedRhythm) return;
+        const ranges = getGroupRanges(selectedRhythm);
+
+        setSlotChars((prevChars) => {
+            const next = [...prevChars];
+
+            for (const range of ranges) {
+                const groupStart = range.start;
+                const groupEnd = range.end;
+                const firstSource = slotSources[groupStart] ?? 'empty';
+                const groupAnchor =
+                    firstSource === 'manual' && next[groupStart]
+                        ? next[groupStart]
+                        : pickRandomChar(SOUND_CHAR_OPTIONS);
+
+                for (let i = groupStart; i < groupEnd; i += 1) {
+                    const source = slotSources[i] ?? 'empty';
+                    if (source === 'manual') continue;
+
+                    if (i === groupStart) {
+                        next[i] = groupAnchor;
+                        continue;
+                    }
+
+                    const prev = next[i - 1];
+                    if (prev && Math.random() < 0.5) {
+                        next[i] = prev;
+                        continue;
+                    }
+
+                    const nonPrevPool = SOUND_CHAR_OPTIONS.filter((char) => char !== prev);
+                    if (groupAnchor !== prev && Math.random() < 0.7) {
+                        next[i] = groupAnchor;
+                    } else {
+                        next[i] = pickRandomChar(nonPrevPool.length > 0 ? nonPrevPool : SOUND_CHAR_OPTIONS);
+                    }
+                }
+            }
+
+            return next;
+        });
         setSlotSources((prevSources) =>
             prevSources.map((source) => (source === 'manual' ? 'manual' : 'auto'))
         );
@@ -308,7 +397,7 @@ export const SaveConfigModal: React.FC<SaveConfigModalProps> = ({
 
                 {currentStep === 1 && (
                     <div className="space-y-2">
-                        <label className="text-lg text-text">先给捏物起名</label>
+                        <label className="text-lg text-text">你的捏物叫什么？</label>
                         <input
                             type="text"
                             value={name}
@@ -336,7 +425,7 @@ export const SaveConfigModal: React.FC<SaveConfigModalProps> = ({
 
                 {currentStep === 2 && (
                     <div className="space-y-2">
-                        <label className="text-lg text-text">选一个叫声节奏</label>
+                        <label className="text-lg text-text">{displayName} 唱歌的节奏会是？</label>
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                             {rhythmOptions.map((option) => {
                                 const isActive = selectedRhythmId === option.id;
@@ -361,7 +450,7 @@ export const SaveConfigModal: React.FC<SaveConfigModalProps> = ({
 
                 {currentStep === 3 && (
                     <div className="space-y-3">
-                        <label className="text-lg text-text">给每个字位填字</label>
+                        <label className="text-lg text-text">{displayName} 唱歌的声音会像是？</label>
                         {selectedRhythm && (
                             <p className="text-lg text-text-muted">当前节奏：{rhythmToTemplate(selectedRhythm)}</p>
                         )}
@@ -383,7 +472,6 @@ export const SaveConfigModal: React.FC<SaveConfigModalProps> = ({
                                     </button>
                                 ))}
                             </div>
-                            <p className="mt-2 text-lg text-text-muted">当前选中：第 {activeSlotIndex + 1} 字位</p>
                         </div>
 
                         <div className="flex flex-wrap gap-2">
@@ -391,9 +479,17 @@ export const SaveConfigModal: React.FC<SaveConfigModalProps> = ({
                                 type="button"
                                 variant="secondary"
                                 className="text-lg px-3 py-1.5 h-auto"
-                                onClick={handleShuffleRemain}
+                                onClick={handleShuffleWeird}
                             >
-                                Shuffle 未手动字位
+                                来个奇怪的
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                className="text-lg px-3 py-1.5 h-auto"
+                                onClick={handleShuffleNormal}
+                            >
+                                正常一点
                             </Button>
                             <Button
                                 type="button"
@@ -401,7 +497,7 @@ export const SaveConfigModal: React.FC<SaveConfigModalProps> = ({
                                 className="text-lg px-3 py-1.5 h-auto"
                                 onClick={handleResetSlots}
                             >
-                                清空全部字位
+                                清空
                             </Button>
                         </div>
 

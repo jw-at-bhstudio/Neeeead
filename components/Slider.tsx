@@ -74,7 +74,7 @@ export const Slider: React.FC<SliderProps> = ({
                 value={value}
                 onChange={onChange}
                 disabled={disabled}
-                className="w-full h-2 bg-surface rounded-lg appearance-none cursor-pointer accent-primary disabled:cursor-not-allowed"
+                className="w-full h-2 bg-surface rounded-lg appearance-none cursor-pointer accent-primary disabled:cursor-not-allowed touch-none select-none"
             />
             {hasRangeLabels && (
                 <div className="hidden lg:flex justify-between items-center text-lg text-text-muted mt-1 px-1">
