@@ -1,4 +1,6 @@
 
+import { TRAIT_LEVEL_WORDS } from './copywriting';
+
 interface CardGenerationParams {
     svgElement: SVGSVGElement;
     creatureName: string;
@@ -57,22 +59,6 @@ function createCanvasFont(weight: 500 | 700, size: number) {
     return `${weight} ${size}px 'IBM Plex Mono', 'IBM Plex Sans SC', sans-serif`;
 }
 
-async function loadTintedSvgImage(svgPath: string, color: string): Promise<HTMLImageElement> {
-    const source = await loadImage(svgPath);
-    const canvas = document.createElement("canvas");
-    canvas.width = source.naturalWidth || 256;
-    canvas.height = source.naturalHeight || 256;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Cannot create QR tint canvas");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
-    ctx.globalCompositeOperation = "source-in";
-    ctx.fillStyle = color;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const tintedUrl = canvas.toDataURL("image/png");
-    return loadImage(tintedUrl);
-}
-
 export const generateShareCard = (params: CardGenerationParams): Promise<string> => {
     return new Promise(async (resolve, reject) => {
         try {
@@ -91,11 +77,6 @@ export const generateShareCard = (params: CardGenerationParams): Promise<string>
         const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
         const toBucket = (n: number) => Math.min(5, Math.floor(clamp01(n) * 6));
         const getTendency = (n: number, left: string, right: string) => (clamp01(n) >= 0.5 ? right : left);
-
-        const confidantLevel = ["超超超少", "超少", "略少", "略多", "超多", "超超超多"];
-        const actionLevel = ["极限", "大多数时候", "偶尔", "偶尔", "大多数时候", "极限"];
-        const innerLevel = ["太纯粹了有点单线", "看和谁比", "偏纠结", "偏纯粹", "看和谁比", "太丰富了戏精"];
-        const socialLevel = ["完全没心眼儿", "有话说话", "相对", "相对", "无懈可击", "全都是心眼儿"];
 
         const canvas = document.createElement('canvas');
         canvas.width = CARD_WIDTH;
@@ -224,7 +205,7 @@ export const generateShareCard = (params: CardGenerationParams): Promise<string>
                 traitsX,
                 trait1Y,
                 `知己 / ${getTendency(traits.confidant, "少而精", "广而多")} - `,
-                confidantLevel[toBucket(traits.confidant)],
+                TRAIT_LEVEL_WORDS.confidant[toBucket(traits.confidant)],
                 CARD_TEXT_PRIMARY,
                 CARD_TEXT_MUTED
             );
@@ -233,7 +214,7 @@ export const generateShareCard = (params: CardGenerationParams): Promise<string>
                 traitsX,
                 trait2Y,
                 `行事 / ${getTendency(traits.actionStyle, "计划派", "随性派")} - `,
-                actionLevel[toBucket(traits.actionStyle)],
+                TRAIT_LEVEL_WORDS.actionStyle[toBucket(traits.actionStyle)],
                 CARD_TEXT_PRIMARY,
                 CARD_TEXT_MUTED
             );
@@ -242,7 +223,7 @@ export const generateShareCard = (params: CardGenerationParams): Promise<string>
                 traitsX,
                 trait3Y,
                 `内心 / ${getTendency(traits.innerWorld, "简单纯粹", "丰富纠结")} - `,
-                innerLevel[toBucket(traits.innerWorld)],
+                TRAIT_LEVEL_WORDS.innerWorld[toBucket(traits.innerWorld)],
                 CARD_TEXT_PRIMARY,
                 CARD_TEXT_MUTED
             );
@@ -251,7 +232,7 @@ export const generateShareCard = (params: CardGenerationParams): Promise<string>
                 traitsX,
                 trait4Y,
                 `处世 / ${getTendency(traits.socialStyle, "坦率直接", "圆融周到")} - `,
-                socialLevel[toBucket(traits.socialStyle)],
+                TRAIT_LEVEL_WORDS.socialStyle[toBucket(traits.socialStyle)],
                 CARD_TEXT_PRIMARY,
                 CARD_TEXT_MUTED
             );
@@ -261,8 +242,21 @@ export const generateShareCard = (params: CardGenerationParams): Promise<string>
             const qrX = rightX - qrSize;
             const qrY = bottomBlockBottomY - qrSize;
             try {
-                const qrImage = await loadTintedSvgImage(QR_CODE_SRC, CARD_TEXT_PRIMARY);
-                ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+                const qrImage = await loadImage(QR_CODE_SRC);
+                const qrCanvas = document.createElement("canvas");
+                qrCanvas.width = qrSize;
+                qrCanvas.height = qrSize;
+                const qrCtx = qrCanvas.getContext("2d");
+                if (!qrCtx) throw new Error("Could not get QR canvas context");
+
+                // Recolor all visible QR pixels to the card foreground color.
+                qrCtx.drawImage(qrImage, 0, 0, qrSize, qrSize);
+                qrCtx.globalCompositeOperation = "source-in";
+                qrCtx.fillStyle = CARD_TEXT_PRIMARY;
+                qrCtx.fillRect(0, 0, qrSize, qrSize);
+                qrCtx.globalCompositeOperation = "source-over";
+
+                ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
             } catch (error) {
                 console.warn("QR code SVG load failed, fallback to placeholder", error);
                 ctx.fillStyle = '#020E0E';

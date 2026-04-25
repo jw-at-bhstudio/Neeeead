@@ -9,7 +9,7 @@ import { supabase } from "../lib/supabase/client";
 import { featureFlags } from "../lib/featureFlags";
 import type { User } from "@supabase/supabase-js";
 
-type NavItem = { href: string; label: string };
+type NavItem = { href: string; label: string; mobileLabel: string };
 
 export function AppTopNav() {
   const pathname = usePathname();
@@ -62,10 +62,11 @@ export function AppTopNav() {
 
   const navItems = useMemo<NavItem[]>(
     () => [
-      { href: "/new", label: "捏只新的" },
-      { href: "/my", label: "我的盒子" },
-      ...(isSquareEnabled ? [{ href: "/square", label: "盒子广场" }] : []),
-      { href: "/account", label: "我的账号" },
+      { href: "/new", label: "捏只新的", mobileLabel: "捏" },
+      { href: "/my", label: "我的盒子", mobileLabel: "盒" },
+      ...(isSquareEnabled
+        ? [{ href: "/square", label: "盒子广场", mobileLabel: "场" }]
+        : []),
     ],
     [isSquareEnabled]
   );
@@ -86,7 +87,8 @@ export function AppTopNav() {
                     : "text-text-muted hover:bg-surface hover:text-text"
                 }`}
               >
-                {item.label}
+                <span className="sm:hidden">{item.mobileLabel}</span>
+                <span className="hidden sm:inline">{item.label}</span>
               </Link>
             ))}
           </nav>
@@ -100,7 +102,7 @@ export function AppTopNav() {
             }}
             className="text-lg text-text-muted transition-colors hover:text-text"
           >
-            {userLabel === "游客" ? "登录/注册" : userLabel}
+            {userLabel === "游客" ? "登录" : userLabel}
           </button>
         </div>
       </header>

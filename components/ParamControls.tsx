@@ -7,10 +7,10 @@ import { ToggleSwitch } from './ToggleSwitch';
 import { PresetRangeControl } from './PresetRangeControl';
 import { CopyIcon } from './icons';
 import { Point } from '../utils/geometry';
-import { AuthModal } from './AuthModal';
 import { SaveConfigModal } from './SaveConfigModal';
 import { getCurrentUser, saveMyCreatureDraft } from '../lib/supabase/creatures';
 import type { Json } from '../lib/supabase/database.types';
+import { FiveElementRadarControl } from './FiveElementRadarControl';
 
 interface ParamControlsProps {
     mode: AppMode;
@@ -66,11 +66,11 @@ const viewerModeSliders = [
 ];
 
 const developerModeLabels = {
-    numPoints: "点数(3~400)",
-    irregularity: "不规则度(0~1)",
-    complexity: "复杂度(0~1)",
-    roundness: "圆润度(0~1)",
-    strokeOffset: "描边(50~1000)"
+    numPoints: "金",
+    irregularity: "火",
+    complexity: "木",
+    roundness: "水",
+    strokeOffset: "土"
 };
 
 export const ParamControls: React.FC<ParamControlsProps> = (props) => {
@@ -87,7 +87,6 @@ export const ParamControls: React.FC<ParamControlsProps> = (props) => {
     
     // Auth and Save state
     const [user, setUser] = useState<any>(null);
-    const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
     useEffect(() => {
         getCurrentUser().then(setUser).catch(console.error);
@@ -95,21 +94,18 @@ export const ParamControls: React.FC<ParamControlsProps> = (props) => {
 
     return (
         <aside className="w-full lg:w-96 bg-bg p-[6px] lg:p-0 flex flex-col gap-6 lg:h-full lg:overflow-hidden overflow-y-auto">
-            <div className="flex-shrink-0 flex justify-between items-center">
-                <div className="flex flex-col">
-                    <h1 className="text-xl text-text leading-tight">{isViewer ? "顺手捏" : "大师捏"}</h1>
-                    <p className="text-lg text-text-muted mt-1">
-                        {isViewer ? "普通人，捏只普通的" : "捏的不好，就是你的问题了"}
+            <div className="flex-shrink-0 flex justify-between items-start gap-3">
+                <div className="flex-1 min-w-0">
+                    <h1 className="text-xl text-text leading-tight">
+                        {isViewer ? "顺手捏" : "大师捏"}
+                    </h1>
+                    <p className="mt-1 text-lg text-text-muted leading-tight">
+                        {isViewer ? "普通人，捏普通的物" : "你是什么大师？"}
                     </p>
                 </div>
-                <div className="flex items-center gap-4 text-lg">
-                    {user ? (
-                        <span className="text-primary truncate max-w-[80px]" title={user.email}>{user.email?.split('@')[0]}</span>
-                    ) : (
-                        <button onClick={() => setIsAuthModalOpen(true)} className="text-text-muted hover:text-text transition-colors">登录/注册</button>
-                    )}
+                <div className="flex items-start gap-4 text-lg shrink-0">
                     <div className="flex items-center gap-2">
-                        <label htmlFor="mode-toggle" className={`cursor-pointer transition-colors ${!isViewer ? 'text-primary' : 'text-text-muted hover:text-text'}`}>
+                        <label htmlFor="mode-toggle" className={`text-sm cursor-pointer transition-colors ${!isViewer ? 'text-primary' : 'text-text-muted hover:text-text'}`}>
                             天工捏物
                         </label>
                         <ToggleSwitch
@@ -153,7 +149,21 @@ export const ParamControls: React.FC<ParamControlsProps> = (props) => {
                     </div>
                 ) : (
                     <>
-                        <div className="space-y-4">
+                        <div className="lg:hidden">
+                            <FiveElementRadarControl
+                                numPoints={props.numPoints}
+                                setNumPoints={props.setNumPoints}
+                                irregularity={props.irregularity}
+                                setIrregularity={props.setIrregularity}
+                                complexity={props.complexity}
+                                setComplexity={props.setComplexity}
+                                roundness={props.roundness}
+                                setRoundness={props.setRoundness}
+                                strokeOffset={props.strokeOffset}
+                                setStrokeOffset={props.setStrokeOffset}
+                            />
+                        </div>
+                        <div className="hidden lg:block space-y-4">
                             <Slider label={developerModeLabels.numPoints} min={3} max={400} value={props.numPoints} onChange={e => props.setNumPoints(Number(e.target.value))} />
                             <Slider label={developerModeLabels.irregularity} min={0} max={1} step={0.01} value={props.irregularity} onChange={e => props.setIrregularity(Number(e.target.value))} />
                             <Slider label={developerModeLabels.complexity} min={0} max={1} step={0.01} value={props.complexity} onChange={e => props.setComplexity(Number(e.target.value))} />
@@ -161,7 +171,7 @@ export const ParamControls: React.FC<ParamControlsProps> = (props) => {
                             <Slider label={developerModeLabels.strokeOffset} min={50} max={1000} value={props.strokeOffset} onChange={e => props.setStrokeOffset(Number(e.target.value))} />
                         </div>
                         <div className="border-t border-border pt-6 flex items-center justify-between">
-                            <span className="text-lg text-text">内视</span>
+                            <span className="text-lg text-text">开内视</span>
                             <ToggleSwitch id="show-handles-toggle" label="" checked={showHandles} onChange={(e) => setShowHandles(e.target.checked)} />
                         </div>
                     </>
@@ -208,11 +218,6 @@ export const ParamControls: React.FC<ParamControlsProps> = (props) => {
                 <p>设计 嘉文@不含观点°</p>
             </footer>
             
-            <AuthModal 
-                isOpen={isAuthModalOpen} 
-                onClose={() => setIsAuthModalOpen(false)} 
-                onSuccess={() => getCurrentUser().then(setUser)}
-            />
         </aside>
     );
 };

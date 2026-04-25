@@ -5,7 +5,7 @@ import { ParamControls } from '../components/ParamControls';
 import { SvgCanvas } from '../components/SvgCanvas';
 import { generatePoints, createSmoothPath, Point } from '../utils/geometry';
 import { PresetParams, AppMode, FitMode, QuizAnswerValues } from '../utils/types';
-import { INVALID_MESSAGES, EYE_PROMPTS } from '../utils/copywriting';
+import { INVALID_MESSAGES, EYE_PROMPTS, CARD_SHARE_PHRASES } from '../utils/copywriting';
 import { Button } from '../components/Button';
 import { Slider } from '../components/Slider';
 import { generateShareCard } from '../utils/canvasUtils';
@@ -319,14 +319,6 @@ const quizSteps = [
     { param: 'irregularity', question: '一个完美的周末，你更倾向于？', info: "行事风格", minLabel: '按计划行事，效率第一', maxLabel: '跟着感觉走，享受意外' },
     { param: 'complexity', question: '面对内心不同的声音时，你通常？', info: "内心世界", minLabel: '很快做出决定，目标明确', maxLabel: '反复思量，时常纠结' },
     { param: 'strokeOffset', question: '你的社交风格更偏？', info: "处世态度", minLabel: '坦率直接', maxLabel: '圆融周到' },
-];
-
-const CARD_SHARE_PHRASES = [
-    "我捏的~",
-    "好玩吧？",
-    "这啥呀哈哈哈",
-    "蠢萌小物",
-    "也是有只电子宠物",
 ];
 
 function pickRandomSharePhrase() {
@@ -878,23 +870,34 @@ ${eyesSvgString}
 
     if (appState === 'welcome') {
         return (
-            <div className="min-h-screen bg-bg flex flex-col items-center justify-center text-center p-4 space-y-8">
-                <div className="space-y-2">
-                    <h1 className="text-2xl text-text">盒中捏物</h1>
-                    <p className="text-4xl tracking-widest text-primary">Neeeead!!!</p>
+            <div className="h-[calc(100dvh-57px)] box-border overflow-hidden bg-bg flex flex-col text-center px-4 py-2">
+                <div className="flex-1 flex flex-col items-center justify-start pt-1 gap-0">
+                    <div className="w-full flex flex-col items-center gap-0">
+                        <img
+                            src="/media/LOGO-EN.svg"
+                            alt="Neeeead Logo"
+                            className="w-full md:w-[20vw] md:max-w-none h-auto object-contain"
+                        />
+                        <img
+                            src="/media/LOGO-ZH.svg"
+                            alt="盒中捏物 Logo"
+                            className="mt-6 w-[12vw] min-w-[36px] max-w-[56px] h-auto object-contain"
+                        />
+                    </div>
+                    <div className="mt-16 w-1/2 min-w-[220px] max-w-[560px] text-text-muted">
+                        <p>欢迎来到「盒中捏物」</p>
+                        <p>来捏一只你内心形状的小玩具吧</p>
+                    </div>
+                    <div className="mt-4 flex flex-col sm:flex-row gap-4">
+                        <Button onClick={() => setAppState('quiz')} className="w-48">
+                            顺手捏一只
+                        </Button>
+                        <Button onClick={() => { setMode('developer'); setAppState('playground'); }} variant="secondary" className="w-48">
+                            天工捏物模式
+                        </Button>
+                    </div>
                 </div>
-                <p className="max-w-md text-text-muted">
-                    欢迎来到「盒中捏物」，一个可以捏出你内心形状的小玩具。准备好开始一场自我探索之旅了吗？
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4">
-                    <Button onClick={() => setAppState('quiz')} className="w-48">
-                        开始探索
-                    </Button>
-                    <Button onClick={() => { setMode('developer'); setAppState('playground'); }} variant="secondary" className="w-48">
-                        高级模式
-                    </Button>
-                </div>
-                <footer className="absolute bottom-6 text-lg text-surface space-y-1">
+                <footer className="text-sm sm:text-lg text-surface space-y-1 pb-1">
                     <p className="text-sm">© 2025 四百盒子社区</p>
                     <p>设计 嘉文@不含观点°</p>
                 </footer>
@@ -908,13 +911,13 @@ ${eyesSvgString}
         const setValue = (newValue: number) => setQuizAnswers(prev => ({ ...prev, [step.param]: newValue }));
 
         return (
-            <div className="min-h-screen bg-bg flex items-center justify-center p-8">
-                <div className="w-full max-w-2xl space-y-8">
+            <div className="h-[calc(100dvh-57px)] bg-bg overflow-hidden px-4 py-4">
+                <div className="mx-auto h-full w-full max-w-2xl flex flex-col justify-center gap-5 sm:gap-8">
                     <div className="text-center space-y-2">
                         <p className="text-lg text-text-muted">{step.info}</p>
                         <h2 className="text-2xl text-text">{step.question}</h2>
                     </div>
-                    <div className="py-9 px-[6px] border border-surface rounded-lg">
+                    <div className="py-6 sm:py-9 px-[6px] border border-surface rounded-lg">
                         <Slider 
                             label=""
                             value={value}
@@ -927,7 +930,7 @@ ${eyesSvgString}
                             hideInput
                         />
                     </div>
-                    <div className="relative flex justify-center items-center mt-8">
+                    <div className="relative flex justify-center items-center">
                          <div className="absolute left-0">
                              <Button onClick={() => quizStep > 0 && setQuizStep(quizStep - 1)} variant="secondary" disabled={quizStep === 0}>
                                 上一步
@@ -1056,6 +1059,7 @@ ${eyesSvgString}
                 error={expandError}
                 fillColor={strokeColor}
                 viewBoxSize={CANVAS_SIZE}
+                eyes={eyes}
             />
 
             {generatedCardUrl && (

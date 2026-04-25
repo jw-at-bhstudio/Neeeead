@@ -1,7 +1,8 @@
-﻿
+
 import React, { useRef, useState, useEffect } from 'react';
 import { Button } from './Button';
 import { DownloadIcon, CopyIcon } from './icons';
+import type { Point } from '../utils/geometry';
 
 interface ExpandModalProps {
     isOpen: boolean;
@@ -11,9 +12,10 @@ interface ExpandModalProps {
     error: string | null;
     fillColor: string | null;
     viewBoxSize: number;
+    eyes: Point[];
 }
 
-export const ExpandModal: React.FC<ExpandModalProps> = ({ isOpen, onClose, isLoading, pathData, error, fillColor, viewBoxSize }) => {
+export const ExpandModal: React.FC<ExpandModalProps> = ({ isOpen, onClose, isLoading, pathData, error, fillColor, viewBoxSize, eyes }) => {
     const svgRef = useRef<SVGSVGElement>(null);
     const pathRef = useRef<SVGPathElement>(null);
     const [copyButtonText, setCopyButtonText] = useState('Copy SVG');
@@ -67,10 +69,14 @@ export const ExpandModal: React.FC<ExpandModalProps> = ({ isOpen, onClose, isLoa
 
     const getSvgString = () => {
         if (!pathData) return '';
+        const eyesSvgString = eyes
+            .map((eye) => `<circle cx="${eye.x.toFixed(2)}" cy="${eye.y.toFixed(2)}" r="45" fill="#000000" />`)
+            .join('\n    ');
         // Construct the SVG string with the calculated transform applied to a group
         return `<svg viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" xmlns="http://www.w3.org/2000/svg">
   <g transform="translate(${transformState.tx}, ${transformState.ty}) scale(${transformState.scale})">
     <path d="${pathData}" fill="${resolvedFillColor.current}" />
+    ${eyesSvgString}
   </g>
 </svg>`;
     };
@@ -134,6 +140,9 @@ export const ExpandModal: React.FC<ExpandModalProps> = ({ isOpen, onClose, isLoa
                                     fill={fillColor || 'var(--color-accent)'}
                                     className="transition-all duration-300"
                                 />
+                                {eyes.map((eye, index) => (
+                                    <circle key={`${eye.x}-${eye.y}-${index}`} cx={eye.x} cy={eye.y} r={45} fill="#000000" />
+                                ))}
                             </g>
                         </svg>
                     ) : (

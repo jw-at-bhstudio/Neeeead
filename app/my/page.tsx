@@ -9,6 +9,7 @@ import {
 } from "../../lib/supabase/creatures";
 import { Button } from "../../components/Button";
 import brandPresetConfig from "../../brandPreset.json";
+import { TRAIT_LEVEL_WORDS } from "../../utils/copywriting";
 
 type MyCreature = {
   id: string;
@@ -194,24 +195,19 @@ export default function MyPage() {
       socialStyle: normalize(strokeOffset, brandPresetConfig.strokeOffset.min, brandPresetConfig.strokeOffset.max),
     };
 
-    const confidantLevel = ["超超超少", "超少", "略少", "略多", "超多", "超超超多"];
-    const actionLevel = ["极限", "大多数时候", "偶尔", "偶尔", "大多数时候", "极限"];
-    const innerLevel = ["太纯粹了有点单线", "看和谁比", "偏纠结", "偏纯粹", "看和谁比", "太丰富了戏精"];
-    const socialLevel = ["完全没心眼儿", "有话说话", "相对", "相对", "无懈可击", "全都是心眼儿"];
-
     return {
       traits,
       traitLines: [
-        `知己 / ${getTendency(traits.confidant, "少而精", "广而多")} - ${confidantLevel[toBucket(traits.confidant)]}`,
-        `行事 / ${getTendency(traits.actionStyle, "计划派", "随性派")} - ${actionLevel[toBucket(traits.actionStyle)]}`,
-        `内心 / ${getTendency(traits.innerWorld, "简单纯粹", "丰富纠结")} - ${innerLevel[toBucket(traits.innerWorld)]}`,
-        `处世 / ${getTendency(traits.socialStyle, "坦率直接", "圆融周到")} - ${socialLevel[toBucket(traits.socialStyle)]}`,
+        `知己 / ${getTendency(traits.confidant, "少而精", "广而多")} - ${TRAIT_LEVEL_WORDS.confidant[toBucket(traits.confidant)]}`,
+        `行事 / ${getTendency(traits.actionStyle, "计划派", "随性派")} - ${TRAIT_LEVEL_WORDS.actionStyle[toBucket(traits.actionStyle)]}`,
+        `内心 / ${getTendency(traits.innerWorld, "简单纯粹", "丰富纠结")} - ${TRAIT_LEVEL_WORDS.innerWorld[toBucket(traits.innerWorld)]}`,
+        `处世 / ${getTendency(traits.socialStyle, "坦率直接", "圆融周到")} - ${TRAIT_LEVEL_WORDS.socialStyle[toBucket(traits.socialStyle)]}`,
       ],
       ratios: [
         { label: "金", value: normalize(numPoints, brandPresetConfig.vertices.min, brandPresetConfig.vertices.max) },
-        { label: "木", value: normalize(irregularity, brandPresetConfig.irregularity.min, brandPresetConfig.irregularity.max) },
-        { label: "水", value: normalize(complexity, brandPresetConfig.complexity.min, brandPresetConfig.complexity.max) },
-        { label: "火", value: clamp01(roundness) },
+        { label: "火", value: normalize(irregularity, brandPresetConfig.irregularity.min, brandPresetConfig.irregularity.max) },
+        { label: "木", value: normalize(complexity, brandPresetConfig.complexity.min, brandPresetConfig.complexity.max) },
+        { label: "水", value: clamp01(roundness) },
         { label: "土", value: normalize(strokeOffset, brandPresetConfig.strokeOffset.min, brandPresetConfig.strokeOffset.max) },
       ],
     };
